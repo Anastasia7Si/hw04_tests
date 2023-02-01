@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Последние обновления на сайте{% endblock %}
+{% block header %}Последние обновления на сайте{% endblock %}
+{% block content %} 
+  {% for post in page_obj %}
+    {% include 'includes/post_card.html' with show_author=True show_group=True %}    
+  {% endfor %}
+  {% include 'includes/paginator.html' %}
+{% endblock %}

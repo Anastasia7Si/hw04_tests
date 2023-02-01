@@ -1,0 +1,22 @@
+<article>
+  <ul>
+    {% if show_author %}
+    <li>
+      Автор: {{ post.author.get_full_name }}
+      <a href="{% url 'posts:profile' post.author.username %}">все записи пользователя</a>
+    </li>
+    {% endif %}
+    <li>Дата публикации: {{ post.pub_date|date:"d E Y" }}</li>
+  </ul>
+</article>
+  <p>
+    {{ post.text|linebreaksbr }}
+  </p>
+  <a href="{% url 'posts:post_detail' post.pk %}">подробная информация</a>
+  <br>
+{% if show_group %}
+  {% if post.group %}
+    <a href="{% url 'posts:group_list' post.group.slug %}">все записи сообщества {{ post.group.title }}</a>
+  {% endif %}
+{% endif %}
+{% if not forloop.last %}<hr>{% endif %}

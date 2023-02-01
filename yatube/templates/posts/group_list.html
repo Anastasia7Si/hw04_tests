@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Записи сообщества{{ group.title }}{% endblock %}
+{% block content %} 
+  <h1>{{ group.title }}</h1>
+  <p>{{ group.description|linebreaksbr }}</p>
+  {% for post in page_obj %}
+    {% include 'includes/post_card.html' with show_author=True show_group=False %}  
+  {% endfor %}
+  {% include 'includes/paginator.html' %} 
+{% endblock %}
