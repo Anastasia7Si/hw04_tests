@@ -11,9 +11,7 @@ class SignUpViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='testUser')
         cls.user_client = Client()
-        cls.user_client.force_login(cls.user)
 
         cls.SIGNUP = reverse('users:signup')
 
@@ -21,7 +19,7 @@ class SignUpViewsTests(TestCase):
     def tearDownClass(cls):
         super().tearDownClass()
 
-    def test_about_page_uses_correct_template(self):
+    def test_signup_page_uses_correct_template(self):
         response = self.user_client.get(SignUpViewsTests.SIGNUP)
         self.assertTemplateUsed(response, 'users/signup.html')
 

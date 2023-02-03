@@ -1,11 +1,14 @@
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
-from ..models import Group, Post
+from posts.models import Group, Post, User
 
-User = get_user_model()
+
+INDEX = '/'
+CREATE = '/create/'
+CREATE_REVERSE = '/auth/login/?next=/create/'
+NON_EXISTING_PAGE = '/existing_page/'
 
 
 class PostURLTests(TestCase):
@@ -25,15 +28,11 @@ class PostURLTests(TestCase):
             text='Длинный тестовый пост',
         )
 
-        cls.INDEX = '/'
         cls.GROUP_POSTS = f'/group/{cls.group.slug}/'
         cls.PROFILE = f'/profile/{cls.author.username}/'
         cls.POST_DETAIL = f'/posts/{cls.post.id}/'
-        cls.CREATE = '/create/'
         cls.EDIT = f'/posts/{cls.post.id}/edit/'
-        cls.CREATE_REVERSE = '/auth/login/?next=/create/'
         cls.EDIT_REVERSE = f'/auth/login/?next=/posts/{cls.post.id}/edit/'
-        cls.NON_EXISTING_PAGE = '/existing_page/'
 
     def setUp(self):
         self.guest_client = Client()
@@ -42,14 +41,14 @@ class PostURLTests(TestCase):
         self.authorized_client.force_login(self.user)
 
         self.public_urls = [
-            (PostURLTests.INDEX, 'posts/index.html'),
+            (INDEX, 'posts/index.html'),
             (PostURLTests.GROUP_POSTS, 'posts/group_list.html'),
             (PostURLTests.PROFILE, 'posts/profile.html'),
             (PostURLTests.POST_DETAIL, 'posts/post_detail.html'),
         ]
 
         self.private_urls = [
-            (PostURLTests.CREATE, 'posts/create_post.html'),
+            (CREATE, 'posts/create_post.html'),
             (PostURLTests.EDIT, 'posts/create_post.html'),
         ]
 
@@ -64,16 +63,16 @@ class PostURLTests(TestCase):
                 )
 
     def test_unexisting_page(self):
-        response = self.guest_client.get(PostURLTests.NON_EXISTING_PAGE)
+        response = self.guest_client.get(NON_EXISTING_PAGE)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_authorized_client_creates_post(self):
-        response = self.authorized_client.get(PostURLTests.CREATE)
+        response = self.authorized_client.get(CREATE)
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_post_create_url_redirect_anonymous_on_login(self):
-        response = self.guest_client.get(PostURLTests.CREATE, follow=True)
-        self.assertRedirects(response, PostURLTests.CREATE_REVERSE)
+        response = self.guest_client.get(CREATE, follow=True)
+        self.assertRedirects(response, CREATE_REVERSE)
 
     def test_only_author_edites_post(self):
         response = self.author_client.get(PostURLTests.EDIT)
