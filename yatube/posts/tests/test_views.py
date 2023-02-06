@@ -42,10 +42,6 @@ class PostViewsTests(TestCase):
             'posts:post_edit', kwargs={'post_id': f'{cls.post.id}'}
         )
 
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-
     def setUp(self):
         self.urls_templates_data = [
             (PostViewsTests.INDEX_URL, 'posts/index.html'),
@@ -57,7 +53,8 @@ class PostViewsTests(TestCase):
         ]
 
     def test_post_pages_accessible_by_name(self):
-
+        """Проверяем, что URL, генерируемый при помощи
+        имени posts:<name>, доступен."""
         for url, _ in self.urls_templates_data:
             with self.subTest(url=url):
                 response = PostViewsTests.author_client.get(url)
@@ -67,6 +64,7 @@ class PostViewsTests(TestCase):
                 )
 
     def test_accordance_templates_reverse(self):
+        """Проверяем, что view-функции используют ожидаемые шаблоны."""
 
         for url, template in self.urls_templates_data:
             with self.subTest(url=url):
@@ -77,6 +75,7 @@ class PostViewsTests(TestCase):
                 )
 
     def context_page_obj_is_valid(self, url):
+        """Проверяем контекст по ключу 'page_obj'."""
         response = PostViewsTests.author_client.get(url)
         first_object = response.context['page_obj'][0]
         self.assertIsInstance(first_object, Post)
@@ -84,9 +83,11 @@ class PostViewsTests(TestCase):
         self.assertEqual(first_object.group, PostViewsTests.group)
 
     def test_index_page_show_correct_context(self):
+        """Шаблон index сформирован с правильным контекстом."""
         self.context_page_obj_is_valid(PostViewsTests.INDEX_URL)
 
     def test_group_list_page_show_correct_context(self):
+        """Шаблон group_list сформирован с правильным контекстом."""
         self.context_page_obj_is_valid(PostViewsTests.GROUP_LIST_URL)
         response = PostViewsTests.author_client.get(
             PostViewsTests.GROUP_LIST_URL
@@ -96,6 +97,7 @@ class PostViewsTests(TestCase):
         self.assertEqual(first_group, PostViewsTests.group)
 
     def test_profile_page_show_correct_context(self):
+        """Шаблон profile сформирован с правильным контекстом."""
         self.context_page_obj_is_valid(PostViewsTests.PROFILE_URL)
         response = PostViewsTests.author_client.get(PostViewsTests.PROFILE_URL)
         self.assertEqual(len(response.context['page_obj']), 1)
@@ -104,6 +106,7 @@ class PostViewsTests(TestCase):
         self.assertEqual(first_author, PostViewsTests.author)
 
     def context_post_is_valid(self, url):
+        """Проверка контекста по ключу 'post'."""
         response = PostViewsTests.author_client.get(url)
         post = response.context['post']
         self.assertIsInstance(post, Post)
@@ -111,9 +114,11 @@ class PostViewsTests(TestCase):
         self.assertEqual(post.group, PostViewsTests.group)
 
     def test_post_detail_page_show_correct_context(self):
+        """Шаблон post_detail сформирован с правильным контекстом."""
         self.context_post_is_valid(PostViewsTests.POST_DETAIL_URL)
 
     def form_fields_is_valid(self, url):
+        """Проверка типов полей формы."""
         response = PostViewsTests.author_client.get(url)
         form_fields = {
             'text': forms.fields.CharField,
@@ -125,9 +130,12 @@ class PostViewsTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_create_page_show_correct_context(self):
+        """Шаблон create_post сформирован с правильным контекстом."""
         self.form_fields_is_valid(PostViewsTests.POST_CREATE_URL)
 
     def test_edit_page_show_correct_context(self):
+        """Шаблон create_post на странице редактирования записи
+        сформирован с правильным контекстом."""
         self.context_post_is_valid(PostViewsTests.POST_EDIT_URL)
         self.form_fields_is_valid(PostViewsTests.POST_EDIT_URL)
         response = PostViewsTests.author_client.get(
@@ -137,6 +145,9 @@ class PostViewsTests(TestCase):
         self.assertTrue(is_edit)
 
     def test_check_group_in_pages(self):
+        """Проверка, что запись попала на галвную страницу,
+        страницу сообщества и старницу профиля,
+        для которых была предназначена."""
         self.post = Post.objects.get(group=self.post.group)
         form_fields = {
             PostViewsTests.INDEX_URL: self.post,
@@ -150,6 +161,8 @@ class PostViewsTests(TestCase):
                 self.assertIn(expected, form_field)
 
     def test_post_is_not_in_incorrect_group(self):
+        """Проверка, что запись не попала на страницу сообщества,
+        для которой не была предназначена."""
         self.group2 = Group.objects.create(
             title='Тест-группа2',
             slug='test-slug2',
@@ -197,6 +210,8 @@ class PostPaginatorTests(TestCase):
         )
 
     def test_accordance_posts_per_pages(self):
+        """Проверяем, что количество постов
+        на первой странице равно 10, а на второй - 5"""
 
         for url in [
             PostPaginatorTests.INDEX_URL,

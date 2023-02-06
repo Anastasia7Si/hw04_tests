@@ -36,12 +36,13 @@ class PostFormTests(TestCase):
         cls.form = PostForm()
 
     def setUp(self):
-        self.guest_client = Client()
         self.user = User.objects.create_user(username='testAuthorized')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
     def test_authorized_client_create_form(self):
+        """Проверяем, что авторизованный пользователь
+        создает запись"""
         posts_count = Post.objects.count()
         text = 'Текст авторизованного пользователя'
         create_form_data = {
@@ -62,6 +63,8 @@ class PostFormTests(TestCase):
         self.assertEqual(Post.objects.count(), posts_count + 1)
 
     def test_author_edit_form(self):
+        """Проверяем, что автор записи
+        редактирует запись"""
         text = 'Отредактированный текст'
         edit_form_data = {
             'text': text,

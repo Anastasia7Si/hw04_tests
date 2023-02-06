@@ -21,17 +21,28 @@ class PostModelTest(TestCase):
 
         cls.LENGTH_TEXT = 15
 
-    def test_model_post_have_correct_str_text(self):
-        post = PostModelTest.post
-        post_text = post.text[:PostModelTest.LENGTH_TEXT]
-        self.assertEqual(str(post), post_text)
+    def test_post_have_correct_str_text(self):
+        """Проверяем __str__"""
+        data = {
+            'post': (
+                self.post.__str__(),
+                self.post.text[:PostModelTest.LENGTH_TEXT]
+            ),
+            'group': (
+                self.group.__str__(),
+                self.group.title
+            ),
+        }
 
-    def test_model_group_have_correct_str_title(self):
-        group = PostModelTest.group
-        group_title = group.title
-        self.assertEqual(str(group), group_title)
+        for key, value in data.items():
+            actual_value, expected = value
+            with self.subTest(
+                model=key, expected=expected, actual_value=actual_value
+            ):
+                self.assertEqual(expected, actual_value)
 
     def test_post_verbose_name(self):
+        """Проверяем verbose_name записи"""
         post = PostModelTest.post
         field_verboses = {
             'text': 'Запись',
@@ -47,6 +58,7 @@ class PostModelTest(TestCase):
                 )
 
     def test_group_verbose_name(self):
+        """Проверяем verbose_name группы"""
         group = PostModelTest.group
         field_verboses = {
             'title': 'Имя группы',
@@ -61,6 +73,7 @@ class PostModelTest(TestCase):
                 )
 
     def test_post_help_text(self):
+        """Проверяем help_text записи"""
         post = PostModelTest.post
         field_help = {
             'text': 'Введите текст поста',
