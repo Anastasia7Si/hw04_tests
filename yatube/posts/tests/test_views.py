@@ -1,13 +1,20 @@
-from http import HTTPStatus
+import shutil
+import tempfile
 
 from django import forms
 from django.conf import settings
-from django.test import Client, TestCase
+from http import HTTPStatus
+from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Group, Post, User
+from posts.models import Group, Post, User, Follow
+
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -20,11 +27,24 @@ class PostViewsTests(TestCase):
             slug='test-slug',
             description='Тест-описание',
         )
-
+        cls.small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        cls.image = SimpleUploadedFile(
+            name='small.gif',
+            content=cls.small_gif,
+            content_type='image/gif',
+        )
         cls.post = Post.objects.create(
             author=cls.author,
             text='Большой тест-пост',
             group=cls.group,
+            image=cls.image,
         )
 
         cls.INDEX_URL = reverse('posts:index')
@@ -41,6 +61,11 @@ class PostViewsTests(TestCase):
         cls.POST_EDIT_URL = reverse(
             'posts:post_edit', kwargs={'post_id': f'{cls.post.id}'}
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.urls_templates_data = [
@@ -81,6 +106,7 @@ class PostViewsTests(TestCase):
         self.assertIsInstance(first_object, Post)
         self.assertEqual(first_object.author, PostViewsTests.author)
         self.assertEqual(first_object.group, PostViewsTests.group)
+        self.assertEqual(first_object.image, PostViewsTests.post.image)
 
     def test_index_page_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
@@ -112,6 +138,7 @@ class PostViewsTests(TestCase):
         self.assertIsInstance(post, Post)
         self.assertEqual(post.author, PostViewsTests.author)
         self.assertEqual(post.group, PostViewsTests.group)
+        self.assertEqual(post.image, PostViewsTests.post.image)
 
     def test_post_detail_page_show_correct_context(self):
         """Шаблон post_detail сформирован с правильным контекстом."""
@@ -177,6 +204,27 @@ class PostViewsTests(TestCase):
         self.assertIsInstance(group, Group)
         self.assertEqual(group, self.group2)
 
+    def test_index_cache(self):
+        """Проверяем, что кеширование главной страницы работает."""
+        new_post = Post.objects.create(
+            text='Комментарий проверки кэша',
+            author=PostViewsTests.author,
+            group=PostViewsTests.group,
+        )
+        current_content = PostViewsTests.author_client.get(
+            PostViewsTests.INDEX_URL
+        ).content
+        new_post.delete()
+        after_delete_post_content = PostViewsTests.author_client.get(
+            PostViewsTests.INDEX_URL
+        ).content
+        self.assertEqual(current_content, after_delete_post_content)
+        cache.clear()
+        after_delete_post_content = PostViewsTests.author_client.get(
+            PostViewsTests.INDEX_URL
+        ).content
+        self.assertNotEqual(current_content, after_delete_post_content)
+
 
 class PostPaginatorTests(TestCase):
     @classmethod
@@ -231,3 +279,109 @@ class PostPaginatorTests(TestCase):
                     len(response_second.context['page_obj']),
                     PostPaginatorTests.ADDPOSTS
                 )
+
+
+class FollowViewsTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.author = User.objects.create_user(username='testAuthor')
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
+
+        cls.group = Group.objects.create(
+            title='Тест-группа',
+            slug='test',
+            description='Тест-описание',
+        )
+        cls.post = Post.objects.create(
+            author=cls.author,
+            text='Большой тест-пост',
+            group=cls.group,
+        )
+
+        cls.PROFILE_URL = reverse(
+            'posts:profile', kwargs={'username': f'{cls.author.username}'}
+        )
+        cls.PROFILE_FOLLOW_URL = reverse(
+            'posts:profile_follow',
+            kwargs={'username': f'{cls.author.username}'}
+        )
+        cls.PROFILE_UNFOLLOW_URL = reverse(
+            'posts:profile_unfollow',
+            kwargs={'username': f'{cls.author.username}'}
+        )
+        cls.FOLLOW_URL = reverse('posts:follow_index')
+
+    def setUp(self):
+        self.guest_client = Client()
+        self.user = User.objects.create_user(username='testAuthorized')
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
+    def test_authorized_follow_author(self):
+        """Проверяем, что авторизованный пользователь
+        может подписываться на авторов"""
+        response = self.authorized_client.post(
+            FollowViewsTests.PROFILE_FOLLOW_URL
+        )
+        self.assertTrue(
+            Follow.objects.filter(
+                user=self.user,
+                author=FollowViewsTests.author
+            ).exists()
+        )
+        follow = Follow.objects.latest('id')
+        self.assertEqual(follow.user, self.user)
+        self.assertEqual(follow.author, FollowViewsTests.author)
+        self.assertRedirects(response, FollowViewsTests.PROFILE_URL)
+
+    def test_authorized_unfollow_author(self):
+        """Проверяем, что авторизованный пользователь
+        может отписываться от авторов"""
+        Follow.objects.create(
+            user=self.user, author=FollowViewsTests.author
+        )
+        response = self.authorized_client.post(
+            FollowViewsTests.PROFILE_UNFOLLOW_URL
+        )
+        self.assertEqual(Follow.objects.count(), 0)
+        self.assertRedirects(response, FollowViewsTests.PROFILE_URL)
+
+    def test_guest_client_not_allowed_follow_author(self):
+        """Проверяем, что незарегистрированный пользователь
+        не может подписываться на авторов"""
+        follow_guest_redirect_url = (
+            f'/auth/login/?next=/profile/{self.author.username}/follow/'
+        )
+        response = self.guest_client.post(
+            FollowViewsTests.PROFILE_FOLLOW_URL
+        )
+        self.assertEqual(Follow.objects.count(), 0)
+        self.assertRedirects(response, follow_guest_redirect_url)
+
+    def test_follow_context(self):
+        """Проверяем, что новая запись пользователя появляется
+        в ленте тех, кто на него подписан"""
+        Follow.objects.create(
+            user=self.user,
+            author=FollowViewsTests.author
+        )
+        response = self.authorized_client.get(
+            FollowViewsTests.FOLLOW_URL
+        )
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(len(response.context['page_obj']), 1)
+        self.assertIsInstance(first_object, Post)
+        self.assertEqual(first_object.author, FollowViewsTests.author)
+        self.assertEqual(first_object.group, FollowViewsTests.group)
+        self.assertContains(response, FollowViewsTests.post)
+
+    def test_unfollow_context(self):
+        """Проверяем, что новая запись пользователя не появляется
+        в ленте тех, кто на него не подписан"""
+        response = self.authorized_client.get(
+            FollowViewsTests.FOLLOW_URL
+        )
+        self.assertEqual(len(response.context['page_obj']), 0)
+        self.assertNotContains(response, FollowViewsTests.post)

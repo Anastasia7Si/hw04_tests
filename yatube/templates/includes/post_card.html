@@ -1,3 +1,4 @@
+{% load thumbnail %}
 <article>
   <ul>
     {% if show_author %}
@@ -8,15 +9,16 @@
     {% endif %}
     <li>Дата публикации: {{ post.pub_date|date:"d E Y" }}</li>
   </ul>
-</article>
-  <p>
-    {{ post.text|linebreaksbr }}
-  </p>
+  {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
+  <img class="card-img my-2" src="{{ im.url }}">
+  {% endthumbnail %}
+  <p>{{ post.text|linebreaksbr }}</p>
   <a href="{% url 'posts:post_detail' post.pk %}">подробная информация</a>
   <br>
-{% if show_group %}
-  {% if post.group %}
-    <a href="{% url 'posts:group_list' post.group.slug %}">все записи сообщества {{ post.group.title }}</a>
+  {% if show_group %}
+    {% if post.group %}
+      <a href="{% url 'posts:group_list' post.group.slug %}">все записи сообщества {{ post.group.title }}</a>
+    {% endif %}
   {% endif %}
-{% endif %}
-{% if not forloop.last %}<hr>{% endif %}
+  {% if not forloop.last %}<hr>{% endif %}
+</article>
