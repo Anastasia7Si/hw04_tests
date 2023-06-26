@@ -1,3 +1,31 @@
-# hw04_tests
+Yatube - социальная сеть с возможностью авторизации, лентой персональных новостей, комментариями и подписками на авторов статей.
 
-[![CI](https://github.com/yandex-praktikum/hw04_tests/actions/workflows/python-app.yml/badge.svg?branch=master)](https://github.com/yandex-praktikum/hw04_tests/actions/workflows/python-app.yml)
+Реализованы тесты для проверки следующих сценариев:
+1. После регистрации пользователя создается его персональная страница.
+2. Авторизованный пользователь может создать пост.
+3. Неавторизованный посетитель не может создать пост.
+4. После публикации поста новая запись появляется на главной странице сайта, на личной странице пользователя, и на отдельной странице.
+5. Авторизованный пользователь может отредактировать только свои посты и его содержимое изменится на всех связанных страницах.
+
+
+Как запустить проект:
+    Клонировать репозиторий и перейти в него в командной строке:
+    git clone [git@github.com:Anastasia7Si/hw04_tests.git ](https://github.com/Anastasia7Si/hw04_tests)
+    cd api_yamdb
+    
+    Cоздать и активировать виртуальное окружение:
+    python -m venv venv 
+    source venv/Scripts/activate
+    
+    Установить зависимости из файла requirements.txt:
+    pip install -r requirements.txt
+    
+    Выполнить миграции:
+    python manage.py makemigrations
+    python manage.py migrate
+
+    Запустить проект:
+    python manage.py runserver
+
+Технологии:
+Python 3.7 Django 3.2
